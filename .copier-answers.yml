@@ -1,0 +1,13 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 2026.03.02-6-ga1b98a4
+_src_path: gh:scientific-python/cookie
+backend: hatch
+docs: mkdocs
+email: davis.v.bennett@gmail.com
+full_name: Davis Bennett
+license: MIT
+org: zarr-developers
+project_name: cast-value
+project_short_description: Python implementation of the `cast_value` codec.
+url: https://github.com/zarr-developers/cast-value
+vcs: true
