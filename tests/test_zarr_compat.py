@@ -318,6 +318,16 @@ def test_from_dict_to_dict_roundtrip(
             input=("int32", "uint8", "wrap"),
             expected=None,
         ),
+        Expect(
+            id="int64-to-float32",
+            input=("int64", "float32", None),
+            expected=None,
+        ),
+        Expect(
+            id="float32-to-int64",
+            input=("float32", "int64", None),
+            expected=None,
+        ),
     ],
 )
 def test_validate(
@@ -337,12 +347,6 @@ def test_validate(
 @pytest.mark.parametrize(
     "case",
     [
-        ExpectFail(
-            id="int64-to-float32-precision-loss",
-            input=("int64", "float32", None),
-            err=ValueError,
-            msg="may silently lose precision",
-        ),
         ExpectFail(
             id="wrap-on-float-target",
             input=("int32", "float32", "wrap"),

@@ -1178,3 +1178,245 @@ def test_cast_array_float_to_float(
     )
     assert case.eq(result, case.expected)
     assert result.dtype == case.expected.dtype
+
+
+# ---------------------------------------------------------------------------
+# cast_array: float → float with rounding (precision loss)
+# ---------------------------------------------------------------------------
+#
+# float16 near 2048 has representable values: ..., 2048, 2050, 2052, ...
+# So 2049.0 is exactly halfway between 2048 and 2050.
+# And 2051.0 is exactly halfway between 2050 and 2052.
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        # --- 2051.0 → float16: halfway between 2050 and 2052 ---
+        Expect(
+            id="nearest-even-halfway-up",
+            input=(
+                np.array([2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "nearest-even",
+            ),
+            expected=np.array([2052.0], dtype=np.float16),
+        ),
+        Expect(
+            id="towards-zero-halfway-positive",
+            input=(
+                np.array([2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-zero",
+            ),
+            expected=np.array([2050.0], dtype=np.float16),
+        ),
+        Expect(
+            id="towards-positive-halfway",
+            input=(
+                np.array([2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-positive",
+            ),
+            expected=np.array([2052.0], dtype=np.float16),
+        ),
+        Expect(
+            id="towards-negative-halfway",
+            input=(
+                np.array([2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-negative",
+            ),
+            expected=np.array([2050.0], dtype=np.float16),
+        ),
+        Expect(
+            id="nearest-away-halfway",
+            input=(
+                np.array([2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "nearest-away",
+            ),
+            expected=np.array([2052.0], dtype=np.float16),
+        ),
+        # --- negative: -2051.0 → float16 ---
+        Expect(
+            id="towards-zero-halfway-negative",
+            input=(
+                np.array([-2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-zero",
+            ),
+            expected=np.array([-2050.0], dtype=np.float16),
+        ),
+        Expect(
+            id="towards-positive-negative-value",
+            input=(
+                np.array([-2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-positive",
+            ),
+            expected=np.array([-2050.0], dtype=np.float16),
+        ),
+        Expect(
+            id="towards-negative-negative-value",
+            input=(
+                np.array([-2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-negative",
+            ),
+            expected=np.array([-2052.0], dtype=np.float16),
+        ),
+        # --- 2049.0 → float16: halfway between 2048 and 2050 ---
+        Expect(
+            id="towards-positive-non-half",
+            input=(
+                np.array([2049.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-positive",
+            ),
+            expected=np.array([2050.0], dtype=np.float16),
+        ),
+        Expect(
+            id="towards-negative-non-half",
+            input=(
+                np.array([2049.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-negative",
+            ),
+            expected=np.array([2048.0], dtype=np.float16),
+        ),
+        # --- exact value: no correction needed ---
+        Expect(
+            id="exact-no-correction",
+            input=(
+                np.array([2048.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-zero",
+            ),
+            expected=np.array([2048.0], dtype=np.float16),
+        ),
+        # --- NaN/Inf pass through unchanged regardless of rounding ---
+        Expect(
+            id="nan-passthrough-towards-zero",
+            input=(
+                np.array([np.nan, 2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-zero",
+            ),
+            expected=np.array([np.nan, 2050.0], dtype=np.float16),
+        ),
+        Expect(
+            id="inf-passthrough-towards-zero",
+            input=(
+                np.array([np.inf, 2051.0], dtype=np.float64),
+                np.dtype(np.float16),
+                "towards-zero",
+            ),
+            expected=np.array([np.inf, 2050.0], dtype=np.float16),
+        ),
+    ],
+)
+def test_cast_array_float_to_float_rounding(
+    case: Expect[tuple[np.ndarray, np.dtype, str], np.ndarray],
+) -> None:
+    """Test that float-to-float casts respect the rounding mode when precision is lost."""
+    arr, target_dtype, rounding_mode = case.input
+    result = _call_cast(arr, target_dtype=target_dtype, rounding_mode=rounding_mode)
+    assert case.eq(result, case.expected)
+    assert result.dtype == case.expected.dtype
+
+
+# ---------------------------------------------------------------------------
+# cast_array: int → float with rounding (precision loss)
+# ---------------------------------------------------------------------------
+#
+# float32 has 23 mantissa bits, so integers > 2**24 = 16777216 may lose precision.
+# 16777217 is not exactly representable; the two adjacent float32 values are
+# 16777216.0 and 16777218.0.
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        Expect(
+            id="nearest-even",
+            input=(
+                np.array([16777217], dtype=np.int64),
+                np.dtype(np.float32),
+                "nearest-even",
+            ),
+            expected=np.array([16777216.0], dtype=np.float32),
+        ),
+        Expect(
+            id="towards-zero",
+            input=(
+                np.array([16777217], dtype=np.int64),
+                np.dtype(np.float32),
+                "towards-zero",
+            ),
+            expected=np.array([16777216.0], dtype=np.float32),
+        ),
+        Expect(
+            id="towards-positive",
+            input=(
+                np.array([16777217], dtype=np.int64),
+                np.dtype(np.float32),
+                "towards-positive",
+            ),
+            expected=np.array([16777218.0], dtype=np.float32),
+        ),
+        Expect(
+            id="towards-negative",
+            input=(
+                np.array([16777217], dtype=np.int64),
+                np.dtype(np.float32),
+                "towards-negative",
+            ),
+            expected=np.array([16777216.0], dtype=np.float32),
+        ),
+        Expect(
+            id="nearest-away",
+            input=(
+                np.array([16777217], dtype=np.int64),
+                np.dtype(np.float32),
+                "nearest-away",
+            ),
+            expected=np.array([16777218.0], dtype=np.float32),
+        ),
+        Expect(
+            id="negative-towards-positive",
+            input=(
+                np.array([-16777217], dtype=np.int64),
+                np.dtype(np.float32),
+                "towards-positive",
+            ),
+            expected=np.array([-16777216.0], dtype=np.float32),
+        ),
+        Expect(
+            id="negative-towards-negative",
+            input=(
+                np.array([-16777217], dtype=np.int64),
+                np.dtype(np.float32),
+                "towards-negative",
+            ),
+            expected=np.array([-16777218.0], dtype=np.float32),
+        ),
+        Expect(
+            id="exact-value-no-correction",
+            input=(
+                np.array([16777216], dtype=np.int64),
+                np.dtype(np.float32),
+                "towards-zero",
+            ),
+            expected=np.array([16777216.0], dtype=np.float32),
+        ),
+    ],
+)
+def test_cast_array_int_to_float_rounding(
+    case: Expect[tuple[np.ndarray, np.dtype, str], np.ndarray],
+) -> None:
+    """Test that int-to-float casts respect the rounding mode when precision is lost."""
+    arr, target_dtype, rounding_mode = case.input
+    result = _call_cast(arr, target_dtype=target_dtype, rounding_mode=rounding_mode)
+    assert case.eq(result, case.expected)
+    assert result.dtype == case.expected.dtype

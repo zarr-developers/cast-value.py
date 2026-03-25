@@ -94,6 +94,70 @@ def check_int_range(
             )
 
 
+def _cast_float(
+    arr: np.ndarray[Any, np.dtype[Any]],
+    target_dtype: np.dtype[Any],
+    rounding: RoundingMode,
+) -> np.ndarray[Any, np.dtype[Any]]:
+    """Cast a float (or int) array to a float target dtype, respecting the rounding mode.
+
+    numpy's ``astype`` always uses nearest-even. For other rounding modes we
+    detect which values lost precision and correct them by choosing between
+    the two adjacent representable values in the target dtype.
+    """
+    result = arr.astype(target_dtype)
+
+    if rounding == "nearest-even":
+        return result
+
+    # Widen source to a float type so we can compare. For integer sources,
+    # float64 is the widest available; for float sources, keep the original dtype.
+    if np.issubdtype(arr.dtype, np.integer):
+        wide_dtype = np.float64
+    else:
+        wide_dtype = arr.dtype
+
+    wide_src = arr.astype(wide_dtype)
+    roundtrip = result.astype(wide_dtype)
+    inexact = roundtrip != wide_src
+
+    # Skip NaN/Inf — they are exact in any float type that supports them.
+    if np.issubdtype(wide_dtype, np.floating):
+        inexact &= np.isfinite(wide_src)
+
+    if not inexact.any():
+        return result
+
+    # For inexact values, ``result`` holds the nearest-even candidate.
+    # The other adjacent representable value is one ULP towards the original.
+    ne = result[inexact]  # nearest-even candidates
+    src = wide_src[inexact]  # original values in wide dtype
+    ne_wide = ne.astype(wide_dtype)
+
+    # If nearest-even rounded up (ne > original), the other candidate is one ULP lower.
+    # If nearest-even rounded down (ne < original), the other candidate is one ULP higher.
+    toward = np.where(ne_wide > src, np.float64(-np.inf), np.float64(np.inf)).astype(
+        target_dtype
+    )
+    other = np.nextafter(ne, toward)
+    other_wide = other.astype(wide_dtype)
+
+    match rounding:
+        case "towards-zero":
+            use_other = np.abs(other_wide) < np.abs(ne_wide)
+        case "towards-positive":
+            use_other = other_wide > ne_wide
+        case "towards-negative":
+            use_other = other_wide < ne_wide
+        case "nearest-away":
+            use_other = np.abs(other_wide) > np.abs(ne_wide)
+
+    corrected = result.copy()
+    indices = np.where(inexact)[0]
+    corrected[indices[use_other]] = other[use_other]
+    return corrected
+
+
 def _cast_array_impl(
     arr: np.ndarray[Any, np.dtype[Any]],
     *,
@@ -109,21 +173,21 @@ def _cast_array_impl(
     has_map = bool(scalar_map_entries)
 
     match (src_type, tgt_type, has_map):
-        # float→float or int→float without scalar_map — single astype
+        # float→float or int→float without scalar_map
         case (_, "float", False):
-            return arr.astype(target_dtype)
+            return _cast_float(arr, target_dtype, rounding)
 
         # int→float with scalar_map — widen to float64, apply map, cast
         case ("int", "float", True):
             work = arr.astype(np.float64)
             apply_scalar_map(work, scalar_map_entries)  # type: ignore[arg-type]
-            return work.astype(target_dtype)
+            return _cast_float(work, target_dtype, rounding)
 
         # float→float with scalar_map — copy, apply map, cast
         case ("float", "float", True):
             work = arr.copy()
             apply_scalar_map(work, scalar_map_entries)  # type: ignore[arg-type]
-            return work.astype(target_dtype)
+            return _cast_float(work, target_dtype, rounding)
 
         # int→int without scalar_map — range check then astype
         case ("int", "int", False):

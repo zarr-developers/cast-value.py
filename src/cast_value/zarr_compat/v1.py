@@ -117,32 +117,6 @@ class CastValue(ArrayArrayCodec):
                 )
         if self.out_of_range == "wrap" and not np.issubdtype(target_native, np.integer):
             raise ValueError("out_of_range='wrap' is only valid for integer target types.")
-        # Check that int→float casts won't silently lose precision.
-        # A float type with `m` mantissa bits can exactly represent all integers
-        # in [-2**m, 2**m]. If the integer type's range exceeds that, the cast is lossy.
-        if np.issubdtype(source_native, np.integer) and np.issubdtype(target_native, np.floating):
-            int_info = np.iinfo(source_native)  # type: ignore[type-var]
-            mantissa_bits = np.finfo(target_native).nmant  # type: ignore[arg-type]
-            max_exact_int = 2**mantissa_bits
-            if int_info.max > max_exact_int or int_info.min < -max_exact_int:
-                raise ValueError(
-                    f"Casting {source_native} to {target_native} may silently lose precision. "
-                    f"{target_native} can only exactly represent integers up to 2**{mantissa_bits} "
-                    f"({max_exact_int}), but {source_native} has range "
-                    f"[{int_info.min}, {int_info.max}]."
-                )
-        # Same check for float→int decode direction
-        if np.issubdtype(target_native, np.integer) and np.issubdtype(source_native, np.floating):
-            int_info = np.iinfo(target_native)  # type: ignore[type-var]
-            mantissa_bits = np.finfo(source_native).nmant  # type: ignore[arg-type]
-            max_exact_int = 2**mantissa_bits
-            if int_info.max > max_exact_int or int_info.min < -max_exact_int:
-                raise ValueError(
-                    f"Casting {source_native} to {target_native} may silently lose precision. "
-                    f"{source_native} can only exactly represent integers up to 2**{mantissa_bits} "
-                    f"({max_exact_int}), but {target_native} has range "
-                    f"[{int_info.min}, {int_info.max}]."
-                )
 
     def resolve_metadata(self, chunk_spec: ArraySpec) -> ArraySpec:
         target_zdtype = self.dtype
