@@ -160,3 +160,7 @@ messages_control.disable = [
   "missing-function-docstring",
   "wrong-import-position",
 ]
+
+
+[tool.ty.src]
+exclude = ["noxfile.py"]

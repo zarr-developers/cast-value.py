@@ -34,4 +34,5 @@ Python implementation of the `cast_value` codec for Zarr.
 
 ## `cast_value` codec
 
-The `cast_value` codec defines an operation for safely converting an array from one numeric data type to another. 
+The `cast_value` codec defines an operation for safely converting an array from
+one numeric data type to another.

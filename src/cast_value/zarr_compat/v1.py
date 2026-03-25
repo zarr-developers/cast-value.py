@@ -9,7 +9,6 @@ from zarr.core.common import JSON, parse_named_configuration
 from zarr.core.dtype import get_data_type_from_json
 
 from cast_value.core import cast_array, extract_raw_map
-from cast_value.types import MapEntry, OutOfRangeMode, RoundingMode, ScalarMapJSON
 
 if TYPE_CHECKING:
     from typing import Self
@@ -18,6 +17,8 @@ if TYPE_CHECKING:
     from zarr.core.buffer import NDBuffer
     from zarr.core.chunk_grids import ChunkGrid
     from zarr.core.dtype.wrapper import TBaseDType, TBaseScalar, ZDType
+
+    from cast_value.types import MapEntry, OutOfRangeMode, RoundingMode, ScalarMapJSON
 
 
 def _parse_map_entries(
@@ -34,7 +35,7 @@ def _parse_map_entries(
     for src_str, tgt_str in mapping.items():
         src = src_dtype.from_json_scalar(src_str, zarr_format=3)
         tgt = tgt_dtype.from_json_scalar(tgt_str, zarr_format=3)
-        entries.append((src, tgt))  # type: ignore[arg-type]
+        entries.append(cast("MapEntry", (src, tgt)))
     return entries
 
 
@@ -88,35 +89,39 @@ class CastValue(ArrayArrayCodec):
         _, configuration_parsed = parse_named_configuration(
             data, "cast_value", require_configuration=True
         )
-        return cls(**configuration_parsed)  # type: ignore[arg-type]
+        return cls(**configuration_parsed)  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
 
     def to_dict(self) -> dict[str, JSON]:
-        config: dict[str, JSON] = {"data_type": cast(JSON, self.dtype.to_json(zarr_format=3))}
+        config: dict[str, JSON] = {
+            "data_type": cast("JSON", self.dtype.to_json(zarr_format=3))
+        }
         if self.rounding != "nearest-even":
             config["rounding"] = self.rounding
         if self.out_of_range is not None:
             config["out_of_range"] = self.out_of_range
         if self.scalar_map is not None:
-            config["scalar_map"] = cast(JSON, self.scalar_map)
+            config["scalar_map"] = cast("JSON", self.scalar_map)
         return {"name": "cast_value", "configuration": config}
 
     def validate(
         self,
         *,
-        shape: tuple[int, ...],
+        shape: tuple[int, ...],  # noqa: ARG002
         dtype: ZDType[TBaseDType, TBaseScalar],
-        chunk_grid: ChunkGrid,
+        chunk_grid: ChunkGrid,  # noqa: ARG002
     ) -> None:
         source_native = dtype.to_native_dtype()
         target_native = self.dtype.to_native_dtype()
         for label, dt in [("source", source_native), ("target", target_native)]:
             if not np.issubdtype(dt, np.integer) and not np.issubdtype(dt, np.floating):
-                raise ValueError(
+                msg = (
                     f"cast_value codec only supports integer and floating-point data types. "
                     f"Got {label} dtype {dt}."
                 )
+                raise ValueError(msg)
         if self.out_of_range == "wrap" and not np.issubdtype(target_native, np.integer):
-            raise ValueError("out_of_range='wrap' is only valid for integer target types.")
+            msg = "out_of_range='wrap' is only valid for integer target types."
+            raise ValueError(msg)
 
     def resolve_metadata(self, chunk_spec: ArraySpec) -> ArraySpec:
         target_zdtype = self.dtype
@@ -128,7 +133,9 @@ class CastValue(ArrayArrayCodec):
 
         encode_raw = extract_raw_map(self.scalar_map, "encode")
         encode_entries = (
-            _parse_map_entries(encode_raw, chunk_spec.dtype, self.dtype) if encode_raw else None
+            _parse_map_entries(encode_raw, chunk_spec.dtype, self.dtype)
+            if encode_raw
+            else None
         )
 
         new_fill_arr = cast_array(
@@ -152,7 +159,9 @@ class CastValue(ArrayArrayCodec):
 
         encode_raw = extract_raw_map(self.scalar_map, "encode")
         encode_entries = (
-            _parse_map_entries(encode_raw, _chunk_spec.dtype, self.dtype) if encode_raw else None
+            _parse_map_entries(encode_raw, _chunk_spec.dtype, self.dtype)
+            if encode_raw
+            else None
         )
 
         result = cast_array(
@@ -162,7 +171,7 @@ class CastValue(ArrayArrayCodec):
             out_of_range_mode=self.out_of_range,
             scalar_map_entries=encode_entries,
         )
-        return chunk_array.__class__.from_ndarray_like(result)
+        return chunk_array.__class__.from_ndarray_like(result)  # ty: ignore[invalid-argument-type]
 
     async def _encode_single(
         self,
@@ -181,7 +190,9 @@ class CastValue(ArrayArrayCodec):
 
         decode_raw = extract_raw_map(self.scalar_map, "decode")
         decode_entries = (
-            _parse_map_entries(decode_raw, self.dtype, chunk_spec.dtype) if decode_raw else None
+            _parse_map_entries(decode_raw, self.dtype, chunk_spec.dtype)
+            if decode_raw
+            else None
         )
 
         result = cast_array(
@@ -191,7 +202,7 @@ class CastValue(ArrayArrayCodec):
             out_of_range_mode=self.out_of_range,
             scalar_map_entries=decode_entries,
         )
-        return chunk_array.__class__.from_ndarray_like(result)
+        return chunk_array.__class__.from_ndarray_like(result)  # ty: ignore[invalid-argument-type]
 
     async def _decode_single(
         self,
@@ -200,7 +211,9 @@ class CastValue(ArrayArrayCodec):
     ) -> NDBuffer:
         return self._decode_sync(chunk_data, chunk_spec)
 
-    def compute_encoded_size(self, input_byte_length: int, chunk_spec: ArraySpec) -> int:
+    def compute_encoded_size(
+        self, input_byte_length: int, chunk_spec: ArraySpec
+    ) -> int:
         source_itemsize = chunk_spec.dtype.to_native_dtype().itemsize
         target_itemsize = self.dtype.to_native_dtype().itemsize
         if source_itemsize == 0:  # pragma: no cover

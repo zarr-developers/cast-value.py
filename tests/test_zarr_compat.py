@@ -37,7 +37,7 @@ def _encode(
 ) -> np.ndarray:
     """Encode a numpy array through a CastValue codec, return the result as ndarray."""
     spec = _make_spec(source_dtype_str, fill_value, shape=arr.shape)
-    buf = NDBuffer.from_ndarray_like(arr)
+    buf = NDBuffer.from_ndarray_like(arr)  # ty: ignore[invalid-argument-type]
     encoded = codec._encode_sync(buf, spec)
     assert encoded is not None
     return np.asarray(encoded.as_ndarray_like())
@@ -51,7 +51,7 @@ def _decode(
 ) -> np.ndarray:
     """Decode a numpy array through a CastValue codec, return the result as ndarray."""
     spec = _make_spec(source_dtype_str, fill_value, shape=arr.shape)
-    buf = NDBuffer.from_ndarray_like(arr)
+    buf = NDBuffer.from_ndarray_like(arr)  # ty: ignore[invalid-argument-type]
     decoded = codec._decode_sync(buf, spec)
     return np.asarray(decoded.as_ndarray_like())
 
@@ -335,7 +335,7 @@ def test_validate(
 ) -> None:
     """Test that validate accepts valid type combinations."""
     source_dtype_str, target_dtype_str, out_of_range = case.input
-    codec = CastValue(data_type=target_dtype_str, out_of_range=out_of_range)
+    codec = CastValue(data_type=target_dtype_str, out_of_range=out_of_range)  # ty: ignore[invalid-argument-type]
     source_zdtype = get_data_type_from_json(source_dtype_str, zarr_format=3)
     codec.validate(
         shape=(4,),
@@ -360,7 +360,7 @@ def test_validate_fail(
 ) -> None:
     """Test that validate rejects invalid type combinations."""
     source_dtype_str, target_dtype_str, out_of_range = case.input
-    codec = CastValue(data_type=target_dtype_str, out_of_range=out_of_range)
+    codec = CastValue(data_type=target_dtype_str, out_of_range=out_of_range)  # ty: ignore[invalid-argument-type]
     source_zdtype = get_data_type_from_json(source_dtype_str, zarr_format=3)
     with pytest.raises(case.err, match=case.msg):
         codec.validate(
@@ -581,7 +581,7 @@ def test_encode_single(
     """Test that the async _encode_single path produces the same result as sync."""
     codec, arr, source_dtype_str = case.input
     spec = _make_spec(source_dtype_str, 0, shape=arr.shape)
-    buf = NDBuffer.from_ndarray_like(arr)
+    buf = NDBuffer.from_ndarray_like(arr)  # ty: ignore[invalid-argument-type]
     result_buf = asyncio.run(codec._encode_single(buf, spec))
     assert result_buf is not None
     result = np.asarray(result_buf.as_ndarray_like())
@@ -609,7 +609,7 @@ def test_decode_single(
     """Test that the async _decode_single path produces the same result as sync."""
     codec, arr, source_dtype_str = case.input
     spec = _make_spec(source_dtype_str, 0, shape=arr.shape)
-    buf = NDBuffer.from_ndarray_like(arr)
+    buf = NDBuffer.from_ndarray_like(arr)  # ty: ignore[invalid-argument-type]
     result_buf = asyncio.run(codec._decode_single(buf, spec))
     result = np.asarray(result_buf.as_ndarray_like())
     assert case.eq(result, case.expected)

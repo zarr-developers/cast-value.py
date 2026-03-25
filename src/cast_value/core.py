@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from cast_value.types import MapEntry, OutOfRangeMode, RoundingMode, ScalarMapJSON
+if TYPE_CHECKING:
+    from cast_value.types import MapEntry, OutOfRangeMode, RoundingMode, ScalarMapJSON
 
 
-def apply_scalar_map(work: np.ndarray[Any, np.dtype[Any]], entries: list[MapEntry]) -> None:
+def apply_scalar_map(
+    work: np.ndarray[Any, np.dtype[Any]], entries: list[MapEntry]
+) -> None:
     """Apply scalar map entries in-place. Single pass per entry."""
     for src, tgt in entries:
         if isinstance(src, (float, np.floating)) and np.isnan(src):
@@ -35,7 +38,8 @@ def round_inplace(
             return np.floor(arr)  # type: ignore [no-any-return]
         case "nearest-away":
             return np.sign(arr) * np.floor(np.abs(arr) + 0.5)  # type: ignore [no-any-return]
-    raise ValueError(f"Unknown rounding mode: {mode}")
+    msg = f"Unknown rounding mode: {mode}"
+    raise ValueError(msg)
 
 
 def cast_array(
@@ -86,12 +90,13 @@ def check_int_range(
             return ((work.astype(np.int64) - lo) % range_size + lo).astype(target_dtype)
         case None:
             oor_vals = work[(work < lo) | (work > hi)]
-            raise ValueError(
+            msg = (
                 f"Values out of range for {target_dtype} (valid range: [{lo}, {hi}]), "
                 f"got values in [{w_min}, {w_max}]. "
                 f"Out-of-range values: {oor_vals.ravel()!r}. "
                 f"Set out_of_range='clamp' or out_of_range='wrap' to handle this."
             )
+            raise ValueError(msg)
 
 
 def _cast_float(
@@ -112,10 +117,7 @@ def _cast_float(
 
     # Widen source to a float type so we can compare. For integer sources,
     # float64 is the widest available; for float sources, keep the original dtype.
-    if np.issubdtype(arr.dtype, np.integer):
-        wide_dtype = np.float64
-    else:
-        wide_dtype = arr.dtype
+    wide_dtype = np.float64 if np.issubdtype(arr.dtype, np.integer) else arr.dtype
 
     wide_src = arr.astype(wide_dtype)
     roundtrip = result.astype(wide_dtype)
@@ -166,7 +168,9 @@ def _cast_array_impl(
     out_of_range: OutOfRangeMode | None,
     scalar_map_entries: list[MapEntry] | None,
 ) -> np.ndarray[Any, np.dtype[Any]]:
-    src_type: Literal["int", "float"] = "int" if np.issubdtype(arr.dtype, np.integer) else "float"
+    src_type: Literal["int", "float"] = (
+        "int" if np.issubdtype(arr.dtype, np.integer) else "float"
+    )
     tgt_type: Literal["int", "float"] = (
         "int" if np.issubdtype(target_dtype, np.integer) else "float"
     )
@@ -179,51 +183,59 @@ def _cast_array_impl(
 
         # int→float with scalar_map — widen to float64, apply map, cast
         case ("int", "float", True):
+            assert scalar_map_entries is not None
             work = arr.astype(np.float64)
-            apply_scalar_map(work, scalar_map_entries)  # type: ignore[arg-type]
+            apply_scalar_map(work, scalar_map_entries)
             return _cast_float(work, target_dtype, rounding)
 
         # float→float with scalar_map — copy, apply map, cast
         case ("float", "float", True):
+            assert scalar_map_entries is not None
             work = arr.copy()
-            apply_scalar_map(work, scalar_map_entries)  # type: ignore[arg-type]
+            apply_scalar_map(work, scalar_map_entries)
             return _cast_float(work, target_dtype, rounding)
 
         # int→int without scalar_map — range check then astype
         case ("int", "int", False):
             if arr.dtype.itemsize > target_dtype.itemsize or arr.dtype != target_dtype:
-                return check_int_range(arr, target_dtype=target_dtype, out_of_range=out_of_range)
+                return check_int_range(
+                    arr, target_dtype=target_dtype, out_of_range=out_of_range
+                )
             return arr.astype(target_dtype)
 
         # int→int with scalar_map — widen to int64, apply map, range check
         case ("int", "int", True):
+            assert scalar_map_entries is not None
             work = arr.astype(np.int64)
-            apply_scalar_map(work, scalar_map_entries)  # type: ignore[arg-type]
-            return check_int_range(work, target_dtype=target_dtype, out_of_range=out_of_range)
+            apply_scalar_map(work, scalar_map_entries)
+            return check_int_range(
+                work, target_dtype=target_dtype, out_of_range=out_of_range
+            )
 
         # float→int (with or without scalar_map) — rounding + range check
         case ("float", "int", _):
-            if arr.dtype != np.float64:
-                work = arr.astype(np.float64)
-            else:
-                work = arr.copy()
+            work = arr.astype(np.float64) if arr.dtype != np.float64 else arr.copy()
 
             if scalar_map_entries:
                 apply_scalar_map(work, scalar_map_entries)
 
             bad = np.isnan(work) | np.isinf(work)
             if bad.any():
-                raise ValueError("Cannot cast NaN or Infinity to integer type without scalar_map")
+                msg = "Cannot cast NaN or Infinity to integer type without scalar_map"
+                raise ValueError(msg)
 
             work = round_inplace(work, rounding)
-            return check_int_range(work, target_dtype=target_dtype, out_of_range=out_of_range)
+            return check_int_range(
+                work, target_dtype=target_dtype, out_of_range=out_of_range
+            )
 
-    raise AssertionError(
-        f"Unhandled type combination: src={src_type}, tgt={tgt_type}"
-    )  # pragma: no cover
+    msg = f"Unhandled type combination: src={src_type}, tgt={tgt_type}"  # pragma: no cover
+    raise AssertionError(msg)  # pragma: no cover
 
 
-def extract_raw_map(data: ScalarMapJSON | None, direction: str) -> dict[str, str] | None:
+def extract_raw_map(
+    data: ScalarMapJSON | None, direction: str
+) -> dict[str, str] | None:
     """Extract raw string mapping from scalar_map JSON for 'encode' or 'decode'."""
     if data is None:
         return None

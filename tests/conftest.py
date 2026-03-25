@@ -4,8 +4,8 @@ from typing import Any, Generic, TypeVar
 
 import numpy as np
 
-I = TypeVar("I")
-E = TypeVar("E")
+In = TypeVar("In")
+Ex = TypeVar("Ex")
 
 
 def _default_eq(a: Any, b: Any) -> bool:
@@ -23,24 +23,24 @@ def _default_eq(a: Any, b: Any) -> bool:
 
 
 @dataclass(frozen=True, kw_only=True)
-class Expect(Generic[I, E]):
+class Expect(Generic[In, Ex]):
     id: str
-    input: I
-    expected: E
-    eq: Callable[[E, E], bool] = _default_eq
+    input: In
+    expected: Ex
+    eq: Callable[[Ex, Ex], bool] = _default_eq
 
     @property
     def __name__(self) -> str:
         return self.id
 
+
 @dataclass(frozen=True, kw_only=True)
-class ExpectFail(Generic[I]):
+class ExpectFail(Generic[In]):
     id: str
-    input: I
-    err: type
+    input: In
+    err: type[BaseException]
     msg: str
 
     @property
     def __name__(self) -> str:
         return self.id
-
