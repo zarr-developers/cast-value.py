@@ -18,6 +18,8 @@ OutOfRangeMode = Literal["clamp", "wrap"]
 
 
 class ScalarMapJSON(TypedDict):
+    """JSON representation of the scalar_map codec configuration field."""
+
     encode: NotRequired[tuple[tuple[object, object]]]
     decode: NotRequired[tuple[tuple[object, object]]]
 

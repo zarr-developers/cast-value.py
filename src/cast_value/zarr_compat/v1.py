@@ -166,10 +166,10 @@ class CastValue(ArrayArrayCodec):
 
     async def _encode_single(
         self,
-        chunk_array: NDBuffer,
+        chunk_data: NDBuffer,
         chunk_spec: ArraySpec,
     ) -> NDBuffer | None:
-        return self._encode_sync(chunk_array, chunk_spec)
+        return self._encode_sync(chunk_data, chunk_spec)
 
     def _decode_sync(
         self,
@@ -195,10 +195,10 @@ class CastValue(ArrayArrayCodec):
 
     async def _decode_single(
         self,
-        chunk_array: NDBuffer,
+        chunk_data: NDBuffer,
         chunk_spec: ArraySpec,
     ) -> NDBuffer:
-        return self._decode_sync(chunk_array, chunk_spec)
+        return self._decode_sync(chunk_data, chunk_spec)
 
     def compute_encoded_size(self, input_byte_length: int, chunk_spec: ArraySpec) -> int:
         source_itemsize = chunk_spec.dtype.to_native_dtype().itemsize
