@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from cast_value.core import cast_array
 from cast_value.zarr_compat.v1._base import CastValueBase
@@ -20,11 +20,11 @@ class CastValueNumpy(CastValueBase):
 
     def _cast_array(
         self,
-        arr: np.ndarray[Any, np.dtype[Any]],
+        arr: np.ndarray,
         *,
-        target_dtype: np.dtype[Any],
+        target_dtype: np.dtype,
         scalar_map_entries: list[MapEntry] | None,
-    ) -> np.ndarray[Any, np.dtype[Any]]:
+    ) -> np.ndarray:
         return cast_array(
             arr,
             target_dtype=target_dtype,

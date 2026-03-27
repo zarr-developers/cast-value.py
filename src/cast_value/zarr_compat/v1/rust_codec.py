@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from cast_value.types import MapEntry
 
 
-def _dtype_to_str(dtype: np.dtype[Any]) -> str:
+def _dtype_to_str(dtype: np.dtype) -> str:
     """Convert a numpy dtype to the string name expected by cast-value-rs."""
     return dtype.name
 
@@ -41,11 +41,11 @@ class CastValueRust(CastValueBase):
 
     def _cast_array(
         self,
-        arr: np.ndarray[Any, np.dtype[Any]],
+        arr: np.ndarray,
         *,
-        target_dtype: np.dtype[Any],
+        target_dtype: np.dtype,
         scalar_map_entries: list[MapEntry] | None,
-    ) -> np.ndarray[Any, np.dtype[Any]]:
+    ) -> np.ndarray:
         from cast_value_rs import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
             cast_array as rs_cast_array,
         )

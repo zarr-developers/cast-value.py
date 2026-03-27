@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 from zarr.abc.codec import ArrayArrayCodec
@@ -20,7 +20,12 @@ if TYPE_CHECKING:
     from zarr.core.chunk_grids import ChunkGrid
     from zarr.core.dtype.wrapper import TBaseDType, TBaseScalar, ZDType
 
-    from cast_value.types import MapEntry, OutOfRangeMode, RoundingMode, ScalarMapJSON
+    from cast_value.types import (
+        MapEntry,
+        OutOfRangeMode,
+        RoundingMode,
+        ScalarMapJSON,
+    )
 
 
 def parse_map_entries(
@@ -128,11 +133,11 @@ class CastValueBase(ArrayArrayCodec):
 
     def _cast_array(
         self,
-        arr: np.ndarray[Any, np.dtype[Any]],
+        arr: np.ndarray,
         *,
-        target_dtype: np.dtype[Any],
+        target_dtype: np.dtype,
         scalar_map_entries: list[MapEntry] | None,
-    ) -> np.ndarray[Any, np.dtype[Any]]:
+    ) -> np.ndarray:
         """Cast *arr* to *target_dtype*. Subclasses must override this."""
         raise NotImplementedError
 
