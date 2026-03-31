@@ -53,8 +53,13 @@ test-rs = [
   { include-group = "test" },
   "cast-value-rs",
 ]
-dev = [
+bench = [
   { include-group = "test-rs" },
+  "pytest-benchmark >=5",
+  "pytest-codspeed",
+]
+dev = [
+  { include-group = "bench" },
 ]
 docs = [
     "markdown>=3.9",
