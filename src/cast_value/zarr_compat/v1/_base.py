@@ -10,9 +10,10 @@ from zarr.abc.codec import ArrayArrayCodec
 from zarr.core.common import JSON, parse_named_configuration
 from zarr.core.dtype import get_data_type_from_json
 
-from cast_value.core import extract_raw_map
+from cast_value.zarr_compat._parsing import extract_raw_map, parse_map_entries
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from typing import Self
 
     from zarr.core.array_spec import ArraySpec
@@ -21,33 +22,15 @@ if TYPE_CHECKING:
     from zarr.core.dtype.wrapper import TBaseDType, TBaseScalar, ZDType
 
     from cast_value.types import (
-        MapEntry,
         OutOfRangeMode,
         RoundingMode,
+        ScalarMapEntry,
         ScalarMapJSON,
     )
 
 
-def parse_map_entries(
-    mapping: dict[str, str],
-    src_dtype: ZDType[TBaseDType, TBaseScalar],
-    tgt_dtype: ZDType[TBaseDType, TBaseScalar],
-) -> list[MapEntry]:
-    """Pre-parse a scalar map dict into a list of (src, tgt) tuples.
-
-    Each entry's source value is deserialized using ``src_dtype`` and its target
-    value using ``tgt_dtype``, preserving full precision for both data types.
-    """
-    entries: list[MapEntry] = []
-    for src_str, tgt_str in mapping.items():
-        src = src_dtype.from_json_scalar(src_str, zarr_format=3)
-        tgt = tgt_dtype.from_json_scalar(tgt_str, zarr_format=3)
-        entries.append(cast("MapEntry", (src, tgt)))
-    return entries
-
-
 @dataclass(frozen=True)
-class CastValueBase(ArrayArrayCodec):
+class _CastValueBaseV1(ArrayArrayCodec):
     """Base class for cast-value array-to-array codecs.
 
     Subclasses must implement ``_cast_array`` to provide the actual
@@ -136,7 +119,7 @@ class CastValueBase(ArrayArrayCodec):
         arr: np.ndarray,
         *,
         target_dtype: np.dtype,
-        scalar_map_entries: list[MapEntry] | None,
+        scalar_map_entries: Iterable[ScalarMapEntry] | None,
     ) -> np.ndarray:
         """Cast *arr* to *target_dtype*. Subclasses must override this."""
         raise NotImplementedError

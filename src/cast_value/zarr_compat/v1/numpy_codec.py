@@ -5,17 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from cast_value.core import cast_array
-from cast_value.zarr_compat.v1._base import CastValueBase
+from cast_value.impl._numpy import cast_array
+from cast_value.zarr_compat.v1._base import _CastValueBaseV1
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     import numpy as np
 
-    from cast_value.types import MapEntry
+    from cast_value.types import ScalarMapEntry
 
 
 @dataclass(frozen=True, init=False)
-class CastValueNumpy(CastValueBase):
+class CastValueNumpyV1(_CastValueBaseV1):
     """Cast-value codec backed by the pure-numpy implementation."""
 
     def _cast_array(
@@ -23,7 +25,7 @@ class CastValueNumpy(CastValueBase):
         arr: np.ndarray,
         *,
         target_dtype: np.dtype,
-        scalar_map_entries: list[MapEntry] | None,
+        scalar_map_entries: Iterable[ScalarMapEntry] | None,
     ) -> np.ndarray:
         return cast_array(
             arr,
