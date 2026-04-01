@@ -102,6 +102,7 @@ report.exclude_also = [
 
 [tool.ruff]
 show-fixes = true
+exclude = ["src/cast_value/_version.py"]
 
 [tool.ruff.lint]
 extend-select = [

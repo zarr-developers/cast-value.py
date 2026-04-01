@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from typing import Literal, NotRequired, TypeAlias, TypedDict
 
 import numpy as np
@@ -26,3 +27,6 @@ class ScalarMapJSON(TypedDict):
 
 # Pre-parsed scalar map entry: (source_scalar, target_scalar)
 MapEntry = tuple[NumericScalar, NumericScalar]
+
+# Accepted types for scalar_map_entries parameters
+ScalarMapEntries: TypeAlias = Iterable[MapEntry] | Mapping[NumericScalar, NumericScalar]

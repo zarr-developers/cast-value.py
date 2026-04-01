@@ -1,5 +1,17 @@
 # Python API
 
+## Types
+
+::: cast_value.types.RoundingMode
+
+::: cast_value.types.OutOfRangeMode
+
+::: cast_value.types.NumericScalar
+
+::: cast_value.types.MapEntry
+
+::: cast_value.types.ScalarMapJSON
+
 ## Core
 
 ::: cast_value.core.cast_array
@@ -11,8 +23,6 @@
 ::: cast_value.core.apply_scalar_map
 
 ## Zarr Codec
-
-::: cast_value.zarr_compat.v1.CastValueBaseV1
 
 ::: cast_value.zarr_compat.v1.CastValueNumpyV1
 

@@ -6,13 +6,13 @@ import numpy as np
 import pytest
 from conftest import Expect, ExpectFail
 
-from cast_value.core import (
+from cast_value.impl._numpy import (
     apply_scalar_map,
     cast_array,
     check_int_range,
-    extract_raw_map,
     round_inplace,
 )
+from cast_value.zarr_compat._parsing import extract_raw_map
 
 if TYPE_CHECKING:
     from cast_value.types import MapEntry, ScalarMapJSON

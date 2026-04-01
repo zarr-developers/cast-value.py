@@ -15,7 +15,7 @@ from conftest import Expect
 from zarr_compat.v1._helpers import arrays_bytes_equal
 
 if TYPE_CHECKING:
-    from cast_value.zarr_compat.v1 import CastValueBaseV1
+    from cast_value.zarr_compat.v1._base import _CastValueBaseV1 as CastValueBaseV1
 
 
 def encode_cases(

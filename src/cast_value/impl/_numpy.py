@@ -1,19 +1,39 @@
+"""NumPy-based implementation of the cast_value transformation."""
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from cast_value.types import (
         MapEntry,
         OutOfRangeMode,
         RoundingMode,
-        ScalarMapJSON,
+        ScalarMapEntries,
     )
 
 
-def apply_scalar_map(work: np.ndarray, entries: list[MapEntry]) -> None:
+def _normalize_scalar_map(
+    entries: ScalarMapEntries | None,
+) -> tuple[MapEntry, ...]:
+    """Normalize scalar map entries to a tuple of (src, tgt) pairs.
+
+    Accepts an iterable of (src, tgt) pairs or a mapping of src -> tgt.
+    Returns an empty tuple if entries is None.
+    """
+    if entries is None:
+        return ()
+    if isinstance(entries, Mapping):
+        return tuple(entries.items())  # ty: ignore[invalid-return-type]
+    return tuple(entries)
+
+
+def apply_scalar_map(work: np.ndarray, entries: Iterable[MapEntry]) -> None:
     """Apply scalar map entries in-place. Single pass per entry."""
     for src, tgt in entries:
         if isinstance(src, (float, np.floating)) and np.isnan(src):
@@ -49,7 +69,7 @@ def cast_array(
     target_dtype: np.dtype,
     rounding_mode: RoundingMode,
     out_of_range_mode: OutOfRangeMode | None,
-    scalar_map_entries: list[MapEntry] | None,
+    scalar_map_entries: ScalarMapEntries | None = None,
 ) -> np.ndarray:
     """Cast an array to target_dtype with rounding, out-of-range, and scalar_map handling.
 
@@ -61,13 +81,14 @@ def cast_array(
     so that numpy overflow or invalid-value warnings become hard errors instead
     of being silently swallowed.
     """
+    entries = _normalize_scalar_map(scalar_map_entries)
     with np.errstate(over="raise", invalid="raise"):
         return _cast_array_impl(
             arr,
             target_dtype=target_dtype,
             rounding=rounding_mode,
             out_of_range=out_of_range_mode,
-            scalar_map_entries=scalar_map_entries,
+            scalar_map_entries=entries or None,
         )
 
 
@@ -167,7 +188,7 @@ def _cast_array_impl(
     target_dtype: np.dtype,
     rounding: RoundingMode,
     out_of_range: OutOfRangeMode | None,
-    scalar_map_entries: list[MapEntry] | None,
+    scalar_map_entries: Iterable[MapEntry] | None,
 ) -> np.ndarray:
     src_type: Literal["int", "float"] = (
         "int" if np.issubdtype(arr.dtype, np.integer) else "float"
@@ -232,16 +253,3 @@ def _cast_array_impl(
 
     msg = f"Unhandled type combination: src={src_type}, tgt={tgt_type}"  # pragma: no cover
     raise AssertionError(msg)  # pragma: no cover
-
-
-def extract_raw_map(
-    data: ScalarMapJSON | None, direction: str
-) -> dict[str, str] | None:
-    """Extract raw string mapping from scalar_map JSON for 'encode' or 'decode'."""
-    if data is None:
-        return None
-    raw: dict[str, str] = {}
-    pairs = data.get(direction, [])
-    for src, tgt in pairs:  # type: ignore[attr-defined]
-        raw[str(src)] = str(tgt)
-    return raw or None

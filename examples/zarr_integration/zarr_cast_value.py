@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import numpy as np
 import zarr
+import zarr.registry
+import zarr.storage
 
 from cast_value.zarr_compat.v1 import CastValueRustV1
 

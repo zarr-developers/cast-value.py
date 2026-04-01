@@ -14,7 +14,7 @@ import tracemalloc
 import numpy as np
 import pytest
 
-from cast_value.core import cast_array as numpy_cast_array
+from cast_value.impl._numpy import cast_array as numpy_cast_array
 
 try:
     from cast_value_rs import cast_array as rs_cast_array
