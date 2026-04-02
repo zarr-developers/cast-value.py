@@ -21,7 +21,7 @@ import tracemalloc
 import numpy as np
 from cast_value_rs import cast_array as rs_cast_array
 
-from cast_value.impl._numpy import cast_array as numpy_cast_array
+from cast_value import cast_array as numpy_cast_array
 
 SIZE = 1_000_000
 WARMUP = 3

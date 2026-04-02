@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 
 # /// script
-# dependencies = ["zarr>=3.1.6", "cast-value[rs]", "numpy"]
+# dependencies = ["zarr>=3.1.6", "cast-value", "numpy"]
 # ///
 
 """Zarr-Python integration example for the cast_value codec.
@@ -20,17 +20,17 @@ import zarr
 import zarr.registry
 import zarr.storage
 
-from cast_value.zarr_compat.v1 import CastValueRustV1
+from cast_value.zarr_compat.v1 import CastValueNumpyV1
 
 # Register the codec so zarr can discover it by name
-zarr.registry.register_codec("cast_value", CastValueRustV1)
+zarr.registry.register_codec("cast_value", CastValueNumpyV1)
 
 
 def main() -> None:
     # Create an in-memory zarr array with float64 dtype, stored as uint8.
     # The cast_value codec handles the conversion: float64 -> uint8 on write,
     # uint8 -> float64 on read.
-    codec = CastValueRustV1(
+    codec = CastValueNumpyV1(
         data_type="uint8",
         rounding="nearest-even",
         out_of_range="clamp",
