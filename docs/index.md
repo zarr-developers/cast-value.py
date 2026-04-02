@@ -10,11 +10,15 @@ explicit scalar mappings.
 
 ## Installation
 
+<!--pytest.mark.skip-->
+
 ```bash
 pip install cast-value
 ```
 
 For the optional Rust-accelerated backend:
+
+<!--pytest.mark.skip-->
 
 ```bash
 pip install cast-value[rs]
@@ -25,9 +29,8 @@ pip install cast-value[rs]
 ```python
 import numpy as np
 import zarr
-from cast_value import CastValueNumpyV1
 
-zarr.registry.register_codec("cast_value", CastValueNumpyV1)
+from cast_value import CastValueNumpyV1
 
 codec = CastValueNumpyV1(
     data_type="uint8",
@@ -35,17 +38,20 @@ codec = CastValueNumpyV1(
     out_of_range="clamp",
 )
 
-arr = zarr.create(
-    shape=(100,),
-    dtype="float64",
-    chunks=(10,),
-    store=zarr.storage.MemoryStore(),
-    codecs=[codec, zarr.codecs.BytesCodec()],
-    fill_value=0.0,
-)
+# float64 values with fractional parts and values outside [0, 255]
+data = np.array([1.5, 2.5, 3.5, 100.7, 255.9, -3.0, 999.0], dtype=np.float64)
+arr = zarr.create_array(data=data, store={}, filters=codec)
 
-arr[:] = np.linspace(0, 300, 100)
-print(arr[:10])  # [0. 3. 6. 9. 12. 15. 18. 21. 24. 27.]
+# Read back: fractional values are rounded (nearest-even),
+# out-of-range values are clamped to [0, 255]
+result = arr[:]
+print(result)
+```
+
+<!--pytest-codeblocks:expected-output-->
+
+```
+[  2.   2.   4. 101. 255.   0. 255.]
 ```
 
 ## Backends
