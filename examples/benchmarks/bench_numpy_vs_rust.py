@@ -29,6 +29,7 @@ REPEATS = 10
 
 rng = np.random.default_rng(42)
 
+
 def numpy_cast(arr, target_dtype, **kwargs):
     return numpy_cast_array(
         arr,
