@@ -30,10 +30,10 @@
 
 # cast-value.py
 
-A python implementation of the `cast_value` codec for [Zarr](https://zarr.dev/),
+A Python implementation of the `cast_value` codec for [Zarr](https://zarr.dev/),
 with [zarr-python](https://zarr.readthedocs.io/en/stable/) integration.
 
-## what
+## What
 
 The `cast_value` codec defines how to _safely_ convert arrays between integer
 and float data types. In Zarr terminology, this codec is an "array -> array"
@@ -44,55 +44,133 @@ You can find the
 in the
 [zarr-extensions repository](https://github.com/zarr-developers/zarr-extensions).
 
-## why
+## Why
 
-This codec is commonly used to for lossy data compression: when decoded data
-should be high-precision floats, but the absolute range of the values fits
-within the range of a smaller integer data type, then encoding the floats as
-ints before writing data can vastly shrink the stored values.
+This codec is commonly used for lossy data compression: when decoded data should
+be high-precision floats, but the absolute range of the values fits within the
+range of a smaller integer data type, then encoding the floats as ints before
+writing data can vastly shrink the stored values.
 
 For example, if your data is a sequence of `float64` values like
 `[100.1, 120.3, 125.5]`, storing those values as `uint8`, e.g.
 `[100, 120, 125]`, offers 8-fold reduction in storage size, provided the
 precision lost due to rounding is acceptable.
 
-## how
+## Installation
+
+<!--pytest.mark.skip-->
+
+```bash
+pip install cast-value
+```
+
+For the optional Rust backend (faster for large arrays):
+
+<!--pytest.mark.skip-->
+
+```bash
+pip install 'cast-value[rs]'
+```
+
+## Usage
+
+The codec is automatically registered with zarr-python via the `zarr.codecs`
+entrypoint. When `cast-value[rs]` is installed, the Rust backend is used;
+otherwise it falls back to the pure-NumPy backend.
 
 ```python
-# import the codec that uses the rust backend
-from cast_value import CastValueRustV1
+import numpy as np
+import zarr
+import zarr.storage
 
-# Create an in-memory zarr array with float64 dtype, stored as uint8.
-# The cast_value codec handles the conversion: float64 -> uint8 on write,
-# uint8 -> float64 on read.
+from cast_value import CastValueNumpyV1
 
-codec = CastValueRustV1(
+codec = CastValueNumpyV1(
     data_type="uint8",
     rounding="nearest-even",
     out_of_range="clamp",
-    scalar_map={
-        "encode": [(np.nan, 0), (np.inf, 1), (-np.inf, 2)],
-        "decode": [(0, np.nan), (1, np.inf), (2, -np.inf)],
-    },
 )
-# Create array and write float64 data — values are rounded and clamped to [0, 255]
-data = np.array([np.nan, np.inf, -np.inf, 3.3, 4])
-arr = zarr.create_array(data=data, store=zarr.storage.MemoryStore(), filters=codec)
 
-# Read it back — comes back as float64, but with uint8 precision
+# Write float64 data -- values are rounded and clamped to [0, 255]
+data = np.array([1.5, 100.7, 255.9, -3.0], dtype=np.float64)
+arr = zarr.create_array(store={}, data=data, filters=codec)
+
+# Read it back -- comes back as float64, but with uint8 precision
 result = arr[:]
 
 print(f"Array dtype: {arr.dtype}")
 print(f"Values written: {data}")
 print(f"Values read:    {result}")
-
-"""
-Array dtype: float64
-Values written: [ nan  inf -inf  3.3  4. ]
-Values read:    [ nan  inf -inf   3.   4.]
-"""
 ```
 
-# who
+<!--pytest-codeblocks:expected-output-->
+
+```
+Array dtype: float64
+Values written: [  1.5 100.7 255.9  -3. ]
+Values read:    [  2. 101. 255.   0.]
+```
+
+## Development
+
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
+
+### Setup
+
+<!--pytest.mark.skip-->
+
+```bash
+# Clone the repo
+git clone https://github.com/zarr-developers/cast-value.py.git
+cd cast-value.py
+
+# Install dev dependencies (includes test + benchmark deps)
+uv sync --group dev
+```
+
+### Running tests
+
+<!--pytest.mark.skip-->
+
+```bash
+# Run the full test suite
+uv run pytest tests
+
+# Run with coverage
+uv run pytest tests --cov=cast_value --cov-report=term-missing
+```
+
+### Running all checks
+
+<!--pytest.mark.skip-->
+
+```bash
+# Run the full CI suite locally (tests, linting, type checking)
+uvx nox
+
+# Or run just linting and type checking
+uvx prek
+```
+
+### Building docs
+
+<!--pytest.mark.skip-->
+
+```bash
+uv sync --group docs
+uv run zensical build
+# Output is in site/
+```
+
+### Running examples
+
+<!--pytest.mark.skip-->
+
+```bash
+uv run python examples/zarr_integration/zarr_cast_value.py
+uv run python examples/benchmarks/bench_numpy_vs_rust.py
+```
+
+## Who
 
 Davis Bennett (@d-v-b)

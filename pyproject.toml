@@ -51,6 +51,7 @@ Changelog = "https://github.com/zarr-developers/cast-value/releases"
 test = [
   "pytest >=9",
   "pytest-cov >=7",
+  "pytest-codeblocks",
 ]
 test-rs = [
   { include-group = "test" },
@@ -84,7 +85,7 @@ env-vars.PYTHONWARNDEFAULTENCODING = "1"
 
 [tool.pytest]
 minversion = "9.0"
-addopts = ["-ra", "--showlocals", "--ignore=tests/benchmark"]
+addopts = ["-ra", "--showlocals", "--ignore=tests/benchmark", "--codeblocks"]
 strict = true
 filterwarnings = [
   "error",
@@ -92,6 +93,8 @@ filterwarnings = [
 log_level = "INFO"
 testpaths = [
   "tests",
+  "README.md",
+  "docs",
 ]
 
 
