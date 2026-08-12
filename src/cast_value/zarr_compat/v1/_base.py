@@ -10,7 +10,11 @@ from zarr.abc.codec import ArrayArrayCodec
 from zarr.core.common import JSON, parse_named_configuration
 from zarr.core.dtype import get_data_type_from_json
 
-from cast_value.zarr_compat._parsing import extract_raw_map, parse_map_entries
+from cast_value.zarr_compat._parsing import (
+    extract_raw_map,
+    parse_map_entries,
+    parse_scalar_map,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -26,6 +30,7 @@ if TYPE_CHECKING:
         RoundingMode,
         ScalarMapEntry,
         ScalarMapJSON,
+        ScalarMapLike,
     )
 
 
@@ -48,7 +53,10 @@ class _CastValueBaseV1(ArrayArrayCodec):
         None means error. "clamp" clips to range. "wrap" uses modular arithmetic
         (only valid for integer types).
     scalar_map : dict or None
-        Explicit value overrides as JSON: {"encode": [[src, tgt], ...], "decode": [[src, tgt], ...]}.
+        Explicit value overrides. Each of the optional "encode"/"decode" keys
+        accepts either a mapping of source -> target or an iterable of
+        (source, target) pairs; both are normalized to the spec's
+        list-of-pairs form: {"encode": [[src, tgt], ...], "decode": [[src, tgt], ...]}.
     """
 
     is_fixed_size = True
@@ -64,7 +72,7 @@ class _CastValueBaseV1(ArrayArrayCodec):
         data_type: str | ZDType[TBaseDType, TBaseScalar],
         rounding: RoundingMode = "nearest-even",
         out_of_range: OutOfRangeMode | None = None,
-        scalar_map: ScalarMapJSON | None = None,
+        scalar_map: ScalarMapJSON | ScalarMapLike | None = None,
     ) -> None:
         if isinstance(data_type, str):
             dtype = get_data_type_from_json(data_type, zarr_format=3)
@@ -73,7 +81,7 @@ class _CastValueBaseV1(ArrayArrayCodec):
         object.__setattr__(self, "dtype", dtype)
         object.__setattr__(self, "rounding", rounding)
         object.__setattr__(self, "out_of_range", out_of_range)
-        object.__setattr__(self, "scalar_map", scalar_map)
+        object.__setattr__(self, "scalar_map", parse_scalar_map(scalar_map))
 
     @classmethod
     def from_dict(cls, data: dict[str, JSON]) -> Self:
