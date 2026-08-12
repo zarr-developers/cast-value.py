@@ -12,6 +12,7 @@ from zarr.core.buffer import NDBuffer
 from zarr.core.chunk_grids import RegularChunkGrid
 from zarr.core.dtype import get_data_type_from_json
 
+from cast_value.zarr_compat._parsing import parse_scalar_map
 from cast_value.zarr_compat.v1 import CastValueNumpyV1, parse_map_entries
 from zarr_compat.v1._helpers import arrays_bytes_equal, make_spec
 
@@ -250,6 +251,108 @@ def test_parse_map_entries(
     for (rs, rt), (es, et) in zip(result, case.expected, strict=True):
         assert rs == es
         assert rt == et
+
+
+# ---------------------------------------------------------------------------
+# parse_scalar_map
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        Expect(id="none", input=None, expected=None),
+        Expect(
+            id="dict-form",
+            input={"encode": {"NaN": -32768}, "decode": {-32768: "NaN"}},
+            expected={"encode": [("NaN", -32768)], "decode": [(-32768, "NaN")]},
+        ),
+        Expect(
+            id="pairs-of-tuples",
+            input={"encode": [("NaN", 0)]},
+            expected={"encode": [("NaN", 0)]},
+        ),
+        Expect(
+            id="pairs-of-lists",
+            input={"encode": [["NaN", 0]]},
+            expected={"encode": [("NaN", 0)]},
+        ),
+        Expect(
+            id="mixed-forms",
+            input={"encode": {"NaN": 0}, "decode": [(0, "NaN")]},
+            expected={"encode": [("NaN", 0)], "decode": [(0, "NaN")]},
+        ),
+        Expect(id="empty-map", input={}, expected={}),
+        Expect(
+            id="empty-direction",
+            input={"encode": {}},
+            expected={"encode": []},
+        ),
+    ],
+    ids=lambda case: case.id,
+)
+def test_parse_scalar_map(case: Expect[Any, Any]) -> None:
+    """Test that parse_scalar_map normalizes every accepted input form to the
+    spec's list-of-pairs form."""
+    assert parse_scalar_map(case.input) == case.expected
+
+
+def test_parse_scalar_map_not_a_mapping() -> None:
+    """Test that parse_scalar_map rejects a scalar_map that is not a mapping."""
+    with pytest.raises(TypeError, match="must be a mapping"):
+        parse_scalar_map([("NaN", 0)])  # ty: ignore[invalid-argument-type]
+
+
+def test_parse_scalar_map_unknown_key() -> None:
+    """Test that parse_scalar_map rejects direction keys other than
+    'encode'/'decode'."""
+    with pytest.raises(ValueError, match="keys must be 'encode' or 'decode'"):
+        parse_scalar_map({"Encode": [("NaN", 0)]})  # ty: ignore[invalid-argument-type]
+
+
+def test_parse_scalar_map_entry_wrong_arity() -> None:
+    """Test that parse_scalar_map rejects entries that are not 2-element pairs."""
+    with pytest.raises(ValueError, match="exactly 2 elements"):
+        parse_scalar_map({"encode": [(1, 2, 3)]})  # ty: ignore[invalid-argument-type]
+
+
+def test_parse_scalar_map_entry_not_a_pair() -> None:
+    """Test that parse_scalar_map rejects entries that cannot be unpacked
+    into a pair."""
+    with pytest.raises(TypeError, match="is not a"):
+        parse_scalar_map({"encode": [5]})  # ty: ignore[invalid-argument-type]
+
+
+def test_init_normalizes_dict_scalar_map() -> None:
+    """Test that dict-form scalar_map is normalized at construction so the
+    codec works and serializes to the spec's list-of-pairs form.
+
+    Regression test for zarr-developers/cast-value.rs#24: dict-form maps were
+    accepted at construction but crashed with 'too many values to unpack' when
+    the codec was used.
+    """
+    codec = CastValueNumpyV1(
+        data_type="int16",
+        scalar_map={"encode": {"NaN": -32768}, "decode": {-32768: "NaN"}},
+    )
+    assert codec.scalar_map == {
+        "encode": [("NaN", -32768)],
+        "decode": [(-32768, "NaN")],
+    }
+    config = codec.to_dict()["configuration"]
+    assert config["scalar_map"] == {
+        "encode": [("NaN", -32768)],
+        "decode": [(-32768, "NaN")],
+    }
+    # The crash fired on first use; exercise the encode path.
+    spec = make_spec("float32", 0, shape=(3,))
+    buf = NDBuffer.from_ndarray_like(  # ty: ignore[invalid-argument-type]
+        np.array([1.0, np.nan, 3.0], dtype=np.float32)
+    )
+    result_buf = asyncio.run(codec._encode_single(buf, spec))
+    assert result_buf is not None
+    result = np.asarray(result_buf.as_ndarray_like())
+    assert arrays_bytes_equal(result, np.array([1, -32768, 3], dtype=np.int16))
 
 
 # ---------------------------------------------------------------------------

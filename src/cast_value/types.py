@@ -32,6 +32,20 @@ class ScalarMapJSON(TypedDict):
     decode: NotRequired[list[tuple[object, object]]]
 
 
+class ScalarMapLike(TypedDict):
+    """
+    Accepted input forms for the ``scalar_map`` codec parameter.
+
+    Each direction may be given either as a mapping of source -> target or as
+    an iterable of ``(source, target)`` pairs. Both are normalized to
+    [`ScalarMapJSON`][cast_value.types.ScalarMapJSON] -- the canonical form the
+    cast_value spec uses -- at codec construction time.
+    """
+
+    encode: NotRequired[Mapping[object, object] | Iterable[tuple[object, object]]]
+    decode: NotRequired[Mapping[object, object] | Iterable[tuple[object, object]]]
+
+
 # Pre-parsed scalar map entry: (source_scalar, target_scalar)
 ScalarMapEntry = tuple[NumericScalar, NumericScalar]
 
