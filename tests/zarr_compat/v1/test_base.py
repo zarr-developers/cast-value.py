@@ -340,15 +340,15 @@ def test_init_normalizes_dict_scalar_map() -> None:
         "decode": [(-32768, "NaN")],
     }
     config = codec.to_dict()["configuration"]
+    assert isinstance(config, dict)
     assert config["scalar_map"] == {
         "encode": [("NaN", -32768)],
         "decode": [(-32768, "NaN")],
     }
     # The crash fired on first use; exercise the encode path.
     spec = make_spec("float32", 0, shape=(3,))
-    buf = NDBuffer.from_ndarray_like(  # ty: ignore[invalid-argument-type]
-        np.array([1.0, np.nan, 3.0], dtype=np.float32)
-    )
+    arr = np.array([1.0, np.nan, 3.0], dtype=np.float32)
+    buf = NDBuffer.from_ndarray_like(arr)  # ty: ignore[invalid-argument-type]
     result_buf = asyncio.run(codec._encode_single(buf, spec))
     assert result_buf is not None
     result = np.asarray(result_buf.as_ndarray_like())
