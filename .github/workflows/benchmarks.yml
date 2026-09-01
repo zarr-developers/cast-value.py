@@ -16,11 +16,11 @@ jobs:
     name: Run benchmarks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
@@ -30,7 +30,7 @@ jobs:
         run: uv sync --group bench
 
       - name: Run benchmarks
-        uses: CodSpeedHQ/action@v4
+        uses: CodSpeedHQ/action@v5
         with:
           mode: instrumentation
           run: uv run pytest tests/benchmark/test_cast_perf.py --codspeed
